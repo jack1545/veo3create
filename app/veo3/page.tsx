@@ -22,7 +22,7 @@ type GlobalSettings = {
 
 const defaultSettings: GlobalSettings = {
   model: 'veo3-fast-frames',
-  aspectRatio: '16:9',
+  aspectRatio: '9:16',
   enhancePrompt: true,
   enableUpsample: false
 }
@@ -129,7 +129,7 @@ export default function Veo3Page() {
 
   const canSubmitAll = useMemo(() => items.some(i => i.prompt.trim().length > 0), [items])
 
-  const addItem = () => setItems(prev => [...prev, { prompt: '', aspectRatio: undefined }])
+  const addItem = () => setItems(prev => [...prev, { prompt: '', aspectRatio: '9:16' }])
   const removeItem = (idx: number) => setItems(prev => prev.filter((_, i) => i !== idx))
 
   const updateItem = (idx: number, patch: Partial<SubmitItem>) =>
@@ -148,7 +148,7 @@ export default function Veo3Page() {
       .map(s => s.trim())
       .filter(Boolean)
     if (lines.length === 0) return
-    setItems(lines.map(l => ({ prompt: l, aspectRatio: undefined })))
+    setItems(lines.map(l => ({ prompt: l, aspectRatio: '9:16' })))
   }
 
   const clearBatchInput = () => setBatchInput('')
@@ -245,6 +245,9 @@ export default function Veo3Page() {
             <button onClick={saveToken}>保存到缓存</button>
             <button onClick={clearToken}>移除缓存</button>
           </div>
+          <div style={{ fontSize: 12, color: '#a00', marginTop: -8, marginBottom: 12 }}>
+            风险提示：Token 不会保存到服务器，仅在本地缓存一周。请勿在公共设备输入或分享你的 Token；若担心泄露，随时点击“移除缓存”。
+          </div>
 
           <h2>批量录入提示词</h2>
           <div style={{ marginBottom: 12 }}>
@@ -302,10 +305,13 @@ export default function Veo3Page() {
                 zIndex: 1000
               }}
             >
-              <div style={{ marginBottom: 6, fontWeight: 600 }}>已拖入图片（可拖到条目以调整归属）</div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                <div style={{ fontWeight: 600 }}>已拖入图片（可拖到条目以调整归属）</div>
+                <button style={{ fontSize: 12 }} onClick={() => setDroppedImageUrls([])}>清空</button>
+              </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8 }}>
                 {droppedImageUrls.map((url, i) => (
-                  <div key={i} style={{ border: '1px solid #ddd', borderRadius: 6, padding: 6 }}>
+                  <div key={i} style={{ position: 'relative', border: '1px solid #ddd', borderRadius: 6, padding: 6 }}>
                     <img
                       src={url}
                       alt={`dropped-${i}`}
@@ -316,6 +322,24 @@ export default function Veo3Page() {
                         e.dataTransfer.setData('sourcePoolIndex', String(i))
                       }}
                     />
+                    <button
+                      title="删除"
+                      onClick={() => setDroppedImageUrls(prev => prev.filter((_, j) => j !== i))}
+                      style={{
+                        position: 'absolute',
+                        top: 4,
+                        right: 4,
+                        background: '#fff',
+                        border: '1px solid #ccc',
+                        borderRadius: 12,
+                        width: 20,
+                        height: 20,
+                        lineHeight: '18px',
+                        textAlign: 'center',
+                        cursor: 'pointer',
+                        fontSize: 12
+                      }}
+                    >×</button>
                   </div>
                 ))}
               </div>
@@ -383,11 +407,10 @@ export default function Veo3Page() {
                 <label style={{ display: 'block', marginTop: 8 }}>提示词：</label>
                 <textarea value={it.prompt} onChange={e => updateItem(idx, { prompt: e.target.value })} rows={4} style={{ width: '100%' }} />
 
-                <label style={{ display: 'block', marginTop: 8 }}>画幅覆盖：</label>
-                <select value={it.aspectRatio || ''} onChange={e => updateItem(idx, { aspectRatio: (e.target.value as AspectRatio) || undefined })}>
-                  <option value="">跟随全局</option>
-                  <option value="16:9">16:9</option>
+                <label style={{ display: 'block', marginTop: 8 }}>画幅：</label>
+                <select value={it.aspectRatio || '9:16'} onChange={e => updateItem(idx, { aspectRatio: e.target.value as AspectRatio })}>
                   <option value="9:16">9:16</option>
+                  <option value="16:9">16:9</option>
                 </select>
 
                 <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
@@ -415,16 +438,19 @@ export default function Veo3Page() {
                       }}
                     />
                     {it.firstImage && (
-                      <img
-                        src={it.firstImage}
-                        alt="first"
-                        style={{ width: 120, marginTop: 6 }}
-                        draggable
-                        onDragStart={e => {
-                          e.dataTransfer.setData('text/plain', it.firstImage || '')
-                          e.dataTransfer.setData('sourceItemIdx', String(idx))
-                        }}
-                      />
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6 }}>
+                        <img
+                          src={it.firstImage}
+                          alt="first"
+                          style={{ width: 120 }}
+                          draggable
+                          onDragStart={e => {
+                            e.dataTransfer.setData('text/plain', it.firstImage || '')
+                            e.dataTransfer.setData('sourceItemIdx', String(idx))
+                          }}
+                        />
+                        <button style={{ fontSize: 12 }} onClick={() => updateItem(idx, { firstImage: undefined })}>移除首帧</button>
+                      </div>
                     )}
                   </div>
                   <div style={{ flex: 1 }}>
@@ -445,7 +471,13 @@ export default function Veo3Page() {
                 </div>
 
                 {it.videoUrl && (
-                  <video src={it.videoUrl} controls style={{ width: '100%', marginTop: 8 }} />
+                  <div style={{ marginTop: 8 }}>
+                    <video src={it.videoUrl} controls style={{ width: '100%' }} />
+                    <div style={{ marginTop: 6 }}>
+                      <a href={it.videoUrl} target="_blank" rel="noreferrer" style={{ marginRight: 8 }}>在新窗口打开</a>
+                      <a href={it.videoUrl} download>下载视频</a>
+                    </div>
+                  </div>
                 )}
               </div>
             ))}
