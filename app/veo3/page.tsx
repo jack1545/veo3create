@@ -206,7 +206,12 @@ export default function Veo3Page() {
 
   return (
     <div style={{ padding: 16, maxWidth: 1200, margin: '0 auto', paddingRight: 340 }}>
-      <h1>Veo3 批量视频生成</h1>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, justifyContent: 'space-between' }}>
+        <h1 style={{ margin: 0 }}>Veo3 批量视频生成</h1>
+        <div style={{ color: '#666', fontSize: 14 }}>
+          目前仅支持yunwu.ai，VEO3 视频目前￥0.6/8秒。技巧：分镜如果是连续的可以一次生成2个分镜
+        </div>
+      </div>
 
       <div style={{ marginTop: 12, marginBottom: 12 }}>
         <button onClick={() => setActiveTab('submit')} disabled={activeTab === 'submit'}>提交</button>
