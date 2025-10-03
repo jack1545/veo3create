@@ -4,6 +4,14 @@ import React, { useEffect, useMemo, useRef, useState } from 'react'
 
 type AspectRatio = '16:9' | '9:16'
 
+type Veo3FrontendModel =
+  | 'veo3'
+  | 'veo3-fast-frames'
+  | 'veo3-fast'
+  | 'veo3-pro'
+  | 'veo3-pro-frames'
+  | 'veo3-frames'
+
 type SubmitItem = {
   id?: string
   prompt: string
@@ -14,7 +22,7 @@ type SubmitItem = {
 }
 
 type GlobalSettings = {
-  model: string
+  model: Veo3FrontendModel
   aspectRatio: AspectRatio
   enhancePrompt: boolean
   enableUpsample: boolean
@@ -355,9 +363,13 @@ export default function Veo3Page() {
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
             <label>
               模型：
-              <select value={settings.model} onChange={e => setSettings(s => ({ ...s, model: e.target.value }))}>
-                <option value="veo3-fast-frames">veo3-fast-frames</option>
+              <select value={settings.model} onChange={e => setSettings(s => ({ ...s, model: e.target.value as Veo3FrontendModel }))}>
                 <option value="veo3">veo3</option>
+                <option value="veo3-fast-frames">veo3-fast-frames</option>
+                <option value="veo3-fast">veo3-fast</option>
+                <option value="veo3-pro">veo3-pro</option>
+                <option value="veo3-pro-frames">veo3-pro-frames</option>
+                <option value="veo3-frames">veo3-frames</option>
               </select>
             </label>
             <label>
