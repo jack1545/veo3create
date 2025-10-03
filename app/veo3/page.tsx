@@ -405,7 +405,7 @@ export default function Veo3Page() {
                   <button onClick={() => removeItem(idx)}>删除</button>
                 </div>
                 <label style={{ display: 'block', marginTop: 8 }}>提示词：</label>
-                <textarea value={it.prompt} onChange={e => updateItem(idx, { prompt: e.target.value })} rows={4} style={{ width: '100%' }} />
+                <textarea value={it.prompt} onChange={e => updateItem(idx, { prompt: e.target.value })} rows={4} style={{ width: '100%' }} placeholder="输入中文提示词即可，API会将中文转为英文" />
 
                 <label style={{ display: 'block', marginTop: 8 }}>画幅：</label>
                 <select value={it.aspectRatio || '9:16'} onChange={e => updateItem(idx, { aspectRatio: e.target.value as AspectRatio })}>
