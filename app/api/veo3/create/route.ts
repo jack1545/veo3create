@@ -1,7 +1,15 @@
 import { NextResponse } from 'next/server'
 
+type Veo3Model =
+  | 'veo3-fast'
+  | 'veo3-pro'
+  | 'veo3-pro-frames'
+  | 'veo3-frames'
+  | 'veo3-fast-frames'
+  | 'veo3'
+
 interface Veo3CreateOptions {
-  model?: string
+  model?: Veo3Model
   images?: string[]
   enhancePrompt?: boolean
   enableUpsample?: boolean
