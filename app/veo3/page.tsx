@@ -371,6 +371,9 @@ export default function Veo3Page() {
                 <option value="veo3-pro-frames">veo3-pro-frames</option>
                 <option value="veo3-frames">veo3-frames</option>
               </select>
+              {(settings.model === 'veo3-pro' || settings.model === 'veo3-pro-frames') && (
+                <span style={{ marginLeft: 8, color: '#a00' }}>￥2.8一条</span>
+              )}
             </label>
             <label>
               画幅：
