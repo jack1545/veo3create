@@ -7,10 +7,15 @@ export async function GET(req: Request) {
     const token = url.searchParams.get('token')
     if (!id) return NextResponse.json({ error: 'missing_id' }, { status: 400 })
 
-    const headers: Record<string, string> = { Accept: 'application/json' }
-    if (token) headers['Authorization'] = `Bearer ${token}`
+    const envKey = process.env.SORA2_API_KEY || ''
+    const apiKey = (token && token.length >= 16) ? token : envKey
 
-    const remote = `http://yunwu.ai/v1/video/query?id=${encodeURIComponent(id)}`
+    const headers: Record<string, string> = {
+      Accept: 'application/json',
+      ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {})
+    }
+
+    const remote = `https://yunwu.ai/v1/video/query?id=${encodeURIComponent(id)}`
     const resp = await fetch(remote, { method: 'GET', headers })
 
     const data = await resp.json().catch(() => null)

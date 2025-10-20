@@ -13,13 +13,20 @@ export async function POST(req: Request) {
       token
     } = body || {}
 
+    // Resolve API key from env if client token missing
+    const envKey = process.env.SORA2_API_KEY || ''
+    const apiKey = (token && token.length >= 16) ? token : envKey
+    if (!apiKey || apiKey.length < 16) {
+      return NextResponse.json({ error: 'sora2_api_key_missing' }, { status: 401 })
+    }
+
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
-      Accept: 'application/json'
+      Accept: 'application/json',
+      Authorization: `Bearer ${apiKey}`
     }
-    if (token) headers['Authorization'] = `Bearer ${token}`
 
-    const resp = await fetch('http://yunwu.ai/v1/video/create', {
+    const resp = await fetch('https://yunwu.ai/v1/video/create', {
       method: 'POST',
       headers,
       body: JSON.stringify({ images, model, orientation, prompt, size, duration })

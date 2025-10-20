@@ -205,7 +205,7 @@ export default function Sora2Page() {
           <h2 className="text-lg font-semibold mt-4">Token 设置</h2>
           <div className="flex items-center gap-2 mb-3">
             <input type="password" value={token} onChange={e => setToken(e.target.value)} placeholder="Bearer Token" className="w-80 border rounded px-2 py-1" />
-            <button onClick={saveToken} className="px-3 py-1 rounded bg-brand text-white hover:bg-brand-dark">保存</button>
+            <button onClick={saveToken} className="px-3 py-1 rounded text-white bg-brand hover:bg-brand-dark bg-blue-600 hover:bg-blue-700">保存到缓存</button>
             <button onClick={clearToken} className="px-3 py-1 rounded border border-gray-300">清除</button>
           </div>
 
