@@ -107,7 +107,7 @@ export default function UnifiedHistoryPage() {
                 } catch { return '' }
               }
               const token = sel==='veo3' ? getToken('veo3_token') : getToken('sora2_token')
-              const url = new URL(sel==='veo3' ? '/api/veo3/query' : '/api/sora2/query', location.origin)
+              const url = new URL(sel==='veo3' ? '/api/veo3/detail' : '/api/sora2/query', location.origin)
               url.searchParams.set('id', id)
               if (token) url.searchParams.set('token', token)
               try {
@@ -191,7 +191,7 @@ export default function UnifiedHistoryPage() {
                         }
                         setCardQuery(key, { loading: true, status: undefined, video: undefined })
                         const token = h.source==='veo3' ? getToken('veo3_token') : getToken('sora2_token')
-                        const url = new URL(h.source==='veo3' ? '/api/veo3/query' : '/api/sora2/query', location.origin)
+                        const url = new URL(h.source==='veo3' ? '/api/veo3/detail' : '/api/sora2/query', location.origin)
                         url.searchParams.set('id', h.id || '')
                         if (token) url.searchParams.set('token', token)
                         try {

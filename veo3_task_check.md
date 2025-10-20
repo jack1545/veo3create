@@ -1,5 +1,26 @@
 # 查询任务
 
+## 查询示例
+
+```python
+import http.client
+import mimetypes
+from codecs import encode
+
+conn = http.client.HTTPSConnection("yunwu.ai")
+boundary = ''
+payload = ''
+headers = {
+   'Accept': 'application/json',
+   'Authorization': 'Bearer <token>',
+   'Content-type': 'multipart/form-data; boundary={}'.format(boundary)
+}
+conn.request("GET", "/v1/video/query?id=veo3.1-fast:1760545785-euexscdeL8", payload, headers)
+res = conn.getresponse()
+data = res.read()
+print(data.decode("utf-8"))
+```
+
 ## OpenAPI Specification
 
 ```yaml
