@@ -1,6 +1,8 @@
 'use client'
 
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from "react"
+import { useTokenCache } from "../lib/token"
+import { Veo3Adapter } from "../lib/adapters"
 
 type AspectRatio = '16:9' | '9:16'
 
@@ -40,33 +42,29 @@ const defaultSettings: GlobalSettings = {
 
 import { compressImageIfNeededToDataUrl } from '../lib/image'
 
-async function createVeo3Job(item: SubmitItem, settings: GlobalSettings, token?: string): Promise<{ id?: string; status?: string } | null> {
+async function createJob(item: SubmitItem, settings: GlobalSettings, token?: string): Promise<{ id?: string; status?: string } | null> {
   const images: string[] = []
   if (item.firstImage) images.push(item.firstImage)
 
-  const resp = await fetch('/api/veo3/create', {
+  const payload = Veo3Adapter.buildCreateBody(
+    { id: item.id, prompt: item.prompt, images },
+    { model: settings.model, enhancePrompt: settings.enhancePrompt, enableUpsample: settings.enableUpsample, aspectRatio: item.aspectRatio || settings.aspectRatio },
+    token
+  )
+  const resp = await fetch(Veo3Adapter.createEndpoint, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      prompt: item.prompt,
-      options: {
-        model: settings.model,
-        images,
-        enhancePrompt: settings.enhancePrompt,
-        enableUpsample: settings.enableUpsample,
-        aspectRatio: item.aspectRatio || settings.aspectRatio
-      },
-      token
-    })
+    body: JSON.stringify(payload)
   })
   if (!resp.ok) return null
   return await resp.json()
 }
 
 async function fetchVeo3Detail(id: string, token?: string): Promise<{ status?: string; video_url?: string } | null> {
-  const q = new URLSearchParams({ id })
-  if (token) q.set('token', token)
-  const resp = await fetch(`/api/veo3/detail?${q.toString()}`)
+  const url = new URL(Veo3Adapter.detailEndpoint, location.origin)
+  url.searchParams.set('id', id)
+  if (token) url.searchParams.set('token', token)
+  const resp = await fetch(url.toString())
   if (!resp.ok) return null
   return await resp.json()
 }
@@ -87,7 +85,7 @@ export default function Veo3Page() {
   const [history, setHistory] = useState<SubmitItem[]>([])
   const pollingRef = useRef<Record<string, any>>({})
   const [batchInput, setBatchInput] = useState<string>('')
-  const [token, setToken] = useState<string>('')
+  const { token, setToken, saveToken, clearToken } = useTokenCache(Veo3Adapter.tokenKey)
   const [droppedImageUrls, setDroppedImageUrls] = useState<string[]>([])
   const [modelOrder, setModelOrder] = useState<Veo3FrontendModel[]>(() => {
     try {
@@ -203,15 +201,7 @@ export default function Veo3Page() {
 
   const clearBatchInput = () => setBatchInput('')
 
-  const saveToken = () => {
-    const t = token.trim()
-    if (!t) return
-    setCachedWithTTL('veo3_token', t)
-  }
-  const clearToken = () => {
-    try { localStorage.removeItem('veo3_token') } catch {}
-    setToken('')
-  }
+  // saveToken/clearToken 来自 useTokenCache Hook
 
   const submitOne = async (idx: number) => {
     const it = items[idx]
@@ -224,7 +214,7 @@ export default function Veo3Page() {
       }
     }
     updateItem(idx, { status: 'submitting' })
-    const res = await createVeo3Job(it, settings, token)
+    const res = await createJob(it, settings, token)
     const id = res?.id || ''
     if (!id) {
       updateItem(idx, { status: 'error' })

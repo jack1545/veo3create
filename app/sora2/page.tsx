@@ -1,6 +1,8 @@
 'use client'
 
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from "react"
+import { useTokenCache } from "../lib/token"
+import { Sora2Adapter } from "../lib/adapters"
 import { compressImageIfNeededToDataUrl } from '../lib/image'
 
 type Orientation = 'portrait' | 'landscape'
@@ -30,28 +32,23 @@ const defaultSettings: GlobalSettings = {
   duration: 15
 }
 
-async function createSoraJob(item: SubmitItem, settings: GlobalSettings, token?: string): Promise<{ id?: string; status?: string } | null> {
-  const images: string[] = []
-  if (item.firstImage) images.push(item.firstImage)
-  const resp = await fetch('/api/sora2/create', {
+async function createJob(item: SubmitItem, settings: GlobalSettings, token?: string) {
+  const payload = Sora2Adapter.buildCreateBody(
+    { id: item.id, prompt: item.prompt, image_urls: item.images || [] },
+    { duration: settings.duration, fps: settings.fps, resolution: settings.resolution },
+    token
+  )
+  const resp = await fetch(Sora2Adapter.createEndpoint, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      images,
-      model: settings.model,
-      orientation: item.orientation || settings.orientation,
-      prompt: item.prompt,
-      size: settings.size,
-      duration: settings.duration,
-      token
-    })
+    body: JSON.stringify(payload)
   })
   if (!resp.ok) return null
   return await resp.json()
 }
 
-async function fetchSoraDetail(id: string, token?: string): Promise<{ status?: string; video_url?: string; enhanced_prompt?: string } | null> {
-  const url = new URL('/api/sora2/query', location.origin)
+async function fetchDetail(id: string, token?: string): Promise<{ status?: string; video_url?: string; enhanced_prompt?: string } | null> {
+  const url = new URL(Sora2Adapter.detailEndpoint, location.origin)
   url.searchParams.set('id', id)
   if (token) url.searchParams.set('token', token)
   const resp = await fetch(url.toString(), { method: 'GET' })
@@ -65,7 +62,7 @@ export default function Sora2Page() {
   const [activeTab, setActiveTab] = useState<'submit' | 'history'>('submit')
   const [history, setHistory] = useState<SubmitItem[]>([])
   const pollingRef = useRef<Record<string, any>>({})
-  const [token, setToken] = useState<string>('')
+  const { token, setToken, saveToken, clearToken } = useTokenCache(Sora2Adapter.tokenKey)
 
   const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000
   const setCachedWithTTL = (key: string, value: any) => {
@@ -101,15 +98,7 @@ export default function Sora2Page() {
   const removeItem = (idx: number) => setItems(prev => prev.filter((_, i) => i !== idx))
   const updateItem = (idx: number, patch: Partial<SubmitItem>) => setItems(prev => prev.map((it, i) => (i === idx ? { ...it, ...patch } : it)))
 
-  const saveToken = () => {
-    const t = token.trim()
-    if (!t) return
-    setCachedWithTTL('sora2_token', t)
-  }
-  const clearToken = () => {
-    try { localStorage.removeItem('sora2_token') } catch {}
-    setToken('')
-  }
+  // saveToken/clearToken 来自 useTokenCache Hook
 
   const submitOne = async (idx: number) => {
     const it = items[idx]
@@ -122,7 +111,7 @@ export default function Sora2Page() {
       }
     }
     updateItem(idx, { status: 'submitting' })
-    const res = await createSoraJob(it, settings, token)
+    const res = await createJob(it, settings, token)
     const id = res?.id || ''
     if (!id) {
       updateItem(idx, { status: 'error' })
@@ -132,7 +121,7 @@ export default function Sora2Page() {
     setHistory(prev => [{ ...it, id, status: 'submitted' }, ...prev])
 
     const poll = async () => {
-      const detail = await fetchSoraDetail(id, token)
+      const detail = await fetchDetail(id, token)
       const status = detail?.status || 'unknown'
       const videoUrl = (detail as any)?.video_url
       updateItem(idx, { status, videoUrl })
