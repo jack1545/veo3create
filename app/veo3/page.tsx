@@ -216,6 +216,13 @@ export default function Veo3Page() {
   const submitOne = async (idx: number) => {
     const it = items[idx]
     if (!it.prompt.trim()) return
+    if (!it.firstImage) {
+      const proceed = window.confirm('未提供首帧图。是否继续提交？选择“确定”为提交，选择“取消”为补充首帧图。')
+      if (!proceed) {
+        updateItem(idx, { status: '请补充首帧图' })
+        return
+      }
+    }
     updateItem(idx, { status: 'submitting' })
     const res = await createVeo3Job(it, settings, token)
     const id = res?.id || ''
@@ -423,7 +430,7 @@ export default function Veo3Page() {
 
           <div className="mt-4 mb-2 flex gap-2">
             <button onClick={addItem} className="px-3 py-1 rounded border border-gray-300">新增条目</button>
-            <button onClick={submitAll} disabled={!canSubmitAll} className="px-3 py-1 rounded bg-brand text-white hover:bg-brand-dark disabled:opacity-50">提交全部</button>
+            <button onClick={submitAll} disabled={!canSubmitAll} className="px-3 py-1 rounded bg-blue-600 text-white hover:bg-blue-700 bg-brand hover:bg-brand-dark disabled:opacity-50">提交全部</button>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -521,7 +528,7 @@ export default function Veo3Page() {
                 </div>
 
                 <div className="mt-3 flex gap-2 items-center">
-                  <button onClick={() => submitOne(idx)} className="px-3 py-1 rounded bg-brand text-white hover:bg-brand-dark">提交</button>
+                  <button onClick={() => submitOne(idx)} disabled={!it.prompt.trim()} className="px-3 py-1 rounded bg-blue-600 text-white hover:bg-blue-700 bg-brand hover:bg-brand-dark disabled:opacity-50 disabled:cursor-not-allowed">提交</button>
                   <span className="text-sm text-gray-700">状态：{it.status || '-'}</span>
                 </div>
 

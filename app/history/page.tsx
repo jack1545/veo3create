@@ -28,6 +28,16 @@ export default function UnifiedHistoryPage() {
   const [sora2, setSora2] = useState<BaseItem[]>([])
   const [filter, setFilter] = useState<'all' | Source>('all')
 
+  // Top query state
+  const [queryLoading, setQueryLoading] = useState(false)
+  const [queryInfo, setQueryInfo] = useState<{ source?: Source; id?: string; status?: string; video?: string } | null>(null)
+
+  // Per-card query state
+  const [cardQueries, setCardQueries] = useState<Record<string, { loading?: boolean; status?: string; video?: string }>>({})
+  const setCardQuery = (key: string, patch: Partial<{ loading: boolean; status: string; video: string }>) => {
+    setCardQueries(prev => ({ ...prev, [key]: { ...prev[key], ...patch } }))
+  }
+
   const load = () => {
     const v = readLocal<BaseItem[]>('veo3_history') || []
     const s = readLocal<BaseItem[]>('sora2_history') || []
@@ -78,11 +88,13 @@ export default function UnifiedHistoryPage() {
           </select>
           <input id="q-id" type="text" placeholder="输入任务ID" className="border rounded px-2 py-1 w-40" />
           <button
-            className="px-3 py-1 rounded bg-brand text-white hover:bg-brand-dark border border-brand-600"
+            className="px-3 py-1 rounded bg-blue-600 text-white hover:bg-blue-700 bg-brand hover:bg-brand-dark border border-gray-300 disabled:opacity-50"
             onClick={async () => {
               const sel = (document.getElementById('q-source') as HTMLSelectElement)?.value as Source
               const id = (document.getElementById('q-id') as HTMLInputElement)?.value.trim()
               if (!id) return
+              setQueryLoading(true)
+              setQueryInfo(null)
               const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000
               const getToken = (key: string) => {
                 try {
@@ -98,88 +110,106 @@ export default function UnifiedHistoryPage() {
               const url = new URL(sel==='veo3' ? '/api/veo3/query' : '/api/sora2/query', location.origin)
               url.searchParams.set('id', id)
               if (token) url.searchParams.set('token', token)
-              const resp = await fetch(url.toString(), { method: 'GET' })
-              if (!resp.ok) return
-              const data = await resp.json()
-              const video = (data as any)?.video_url
-              const status = (data as any)?.status || 'unknown'
-              if (video) {
-                const a = document.createElement('a')
-                a.href = video
-                a.target = '_blank'
-                a.rel = 'noreferrer'
-                a.click()
-              } else {
-                alert(`状态：${status}\n暂未返回视频。`)
+              try {
+                const resp = await fetch(url.toString(), { method: 'GET' })
+                const data = await resp.json().catch(() => ({}))
+                const video = (data as any)?.video_url
+                const status = (data as any)?.status || 'unknown'
+                setQueryInfo({ source: sel, id, status, video })
+              } catch {
+                setQueryInfo({ source: sel, id, status: 'error', video: undefined })
+              } finally {
+                setQueryLoading(false)
               }
             }}
           >查询</button>
         </div>
       </div>
 
+      {/* Top query feedback */}
+      {queryLoading && (
+        <div className="mt-2 text-sm text-gray-600">查询中……</div>
+      )}
+      {queryInfo && (
+        <div className="mt-2 p-2 border rounded bg-white">
+          <div className="text-sm">来源：{queryInfo.source}，任务：{queryInfo.id}</div>
+          <div className={`text-sm ${statusClass(queryInfo.status)}`}>状态：{queryInfo.status || '-'}</div>
+          {queryInfo.video ? (
+            <video src={queryInfo.video} controls className="mt-2 w-full rounded" />
+          ) : (
+            <div className="mt-1 text-xs text-gray-500">暂无视频返回或任务未完成</div>
+          )}
+        </div>
+      )}
+
       {items.length === 0 ? (
         <p className="mt-6 text-gray-600">暂无历史记录。请先在 Veo3 或 Sora2 页面提交任务。</p>
       ) : (
         <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {items.map((h, i) => (
-            <div key={i} className="border rounded-lg p-3 bg-white shadow-sm hover:shadow-md transition-shadow">
-              <div className="flex justify-between items-center">
-                <div className="text-xs text-gray-500">ID: {h.id || '-'}</div>
-                <span className={`text-[11px] uppercase font-medium px-2 py-0.5 rounded-full border ${h.source==='veo3' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-purple-50 text-purple-700 border-purple-200'}`}>{h.source}</span>
-              </div>
-              <div className="mt-2 text-sm whitespace-pre-wrap break-words line-clamp-4">{h.prompt || '-'}</div>
-              <div className={`mt-1 text-sm ${statusClass(h.status)}`}>状态：{h.status || '-'}</div>
-              {h.videoUrl ? (
-                <video src={h.videoUrl} controls className="mt-2 w-full rounded" />
-              ) : (
-                <div className="mt-2 text-xs text-gray-500">暂无视频返回或任务未完成</div>
-              )}
-              <div className="mt-2 flex gap-2">
-                {h.videoUrl && (
-                  <a href={h.videoUrl} target="_blank" rel="noreferrer" className="text-sm text-blue-600 hover:underline">新窗口打开</a>
+          {items.map((h, i) => {
+            const key = h.id || String(i)
+            const q = cardQueries[key] || {}
+            return (
+              <div key={i} className="border rounded-lg p-3 bg-white shadow-sm hover:shadow-md transition-shadow">
+                <div className="flex justify-between items-center">
+                  <div className="text-xs text-gray-500">ID: {h.id || '-'}</div>
+                  <span className={`text-[11px] uppercase font-medium px-2 py-0.5 rounded-full border ${h.source==='veo3' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-purple-50 text-purple-700 border-purple-200'}`}>{h.source}</span>
+                </div>
+                <div className="mt-2 text-sm whitespace-pre-wrap break-words line-clamp-4">{h.prompt || '-'}</div>
+                <div className={`mt-1 text-sm ${statusClass(h.status)}`}>状态：{h.status || '-'}</div>
+                {(h.videoUrl || q.video) ? (
+                  <video src={q.video || h.videoUrl} controls className="mt-2 w-full rounded" />
+                ) : q.loading ? (
+                  <div className="mt-2 text-xs text-gray-600">查询中……</div>
+                ) : (
+                  <div className="mt-2 text-xs text-gray-500">暂无视频返回或任务未完成</div>
                 )}
-                {h.videoUrl && (
-                  <a href={h.videoUrl} download className="text-sm text-blue-600 hover:underline">下载</a>
+                {q.status && (
+                  <div className={`mt-1 text-xs ${statusClass(q.status)}`}>最新状态：{q.status}</div>
                 )}
-                {h.id && (
-                  <button
-                    className="text-sm px-2 py-0.5 rounded border border-gray-300 hover:bg-gray-50"
-                    onClick={async () => {
-                      const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000
-                      const getToken = (key: string) => {
+                <div className="mt-2 flex gap-2">
+                  {h.videoUrl && (
+                    <a href={h.videoUrl} target="_blank" rel="noreferrer" className="text-sm text-blue-600 hover:underline">新窗口打开</a>
+                  )}
+                  {h.videoUrl && (
+                    <a href={h.videoUrl} download className="text-sm text-blue-600 hover:underline">下载</a>
+                  )}
+                  {h.id && (
+                    <button
+                      className="text-sm px-2 py-0.5 rounded border border-gray-300 hover:bg-gray-50"
+                      onClick={async () => {
+                        const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000
+                        const getToken = (key: string) => {
+                          try {
+                            const raw = localStorage.getItem(key)
+                            if (!raw) return ''
+                            const obj = JSON.parse(raw)
+                            const ts = obj?.ts || 0
+                            if (Date.now() - ts > ONE_WEEK_MS) return ''
+                            return obj?.value || ''
+                          } catch { return '' }
+                        }
+                        setCardQuery(key, { loading: true, status: undefined, video: undefined })
+                        const token = h.source==='veo3' ? getToken('veo3_token') : getToken('sora2_token')
+                        const url = new URL(h.source==='veo3' ? '/api/veo3/query' : '/api/sora2/query', location.origin)
+                        url.searchParams.set('id', h.id || '')
+                        if (token) url.searchParams.set('token', token)
                         try {
-                          const raw = localStorage.getItem(key)
-                          if (!raw) return ''
-                          const obj = JSON.parse(raw)
-                          const ts = obj?.ts || 0
-                          if (Date.now() - ts > ONE_WEEK_MS) return ''
-                          return obj?.value || ''
-                        } catch { return '' }
-                      }
-                      const token = h.source==='veo3' ? getToken('veo3_token') : getToken('sora2_token')
-                      const url = new URL(h.source==='veo3' ? '/api/veo3/query' : '/api/sora2/query', location.origin)
-                      url.searchParams.set('id', h.id || '')
-                      if (token) url.searchParams.set('token', token)
-                      const resp = await fetch(url.toString(), { method: 'GET' })
-                      if (!resp.ok) return
-                      const data = await resp.json()
-                      const video = (data as any)?.video_url
-                      const status = (data as any)?.status || 'unknown'
-                      if (video) {
-                        const a = document.createElement('a')
-                        a.href = video
-                        a.target = '_blank'
-                        a.rel = 'noreferrer'
-                        a.click()
-                      } else {
-                        alert(`状态：${status}\n暂未返回视频。`)
-                      }
-                    }}
-                  >查询</button>
-                )}
+                          const resp = await fetch(url.toString(), { method: 'GET' })
+                          const data = await resp.json().catch(() => ({}))
+                          const video = (data as any)?.video_url
+                          const status = (data as any)?.status || 'unknown'
+                          setCardQuery(key, { loading: false, status, video })
+                        } catch {
+                          setCardQuery(key, { loading: false, status: 'error', video: undefined })
+                        }
+                      }}
+                    >查询</button>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
     </div>
