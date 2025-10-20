@@ -7,6 +7,9 @@ type Veo3Model =
   | 'veo3-frames'
   | 'veo3-fast-frames'
   | 'veo3'
+  | 'veo3.1'
+  | 'veo3.1-fast'
+  | 'veo3.1-pro'
 
 interface Veo3CreateOptions {
   model?: Veo3Model

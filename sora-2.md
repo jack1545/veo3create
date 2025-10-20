@@ -1,17 +1,355 @@
-{
-    "model": "gpt-4o-image-vip",
-    "messages": [
-      {
-            "role": "user",
-            "content": [
-                {"type": "text", "text": "美化一下这种图片,加上 我爱中国 四个字 尺寸[4:3] "},
-                {
-                    "type": "image_url",
-                    "image_url": {
-                        "url": "https://lsky.zhongzhuan.chat/i/2024/10/17/6711068a14527.png"
-                    }
-                }
-            ]
-        }
-    ]
-  }
+# 创建视频 sora-2
+
+## OpenAPI Specification
+
+```yaml
+openapi: 3.0.1
+info:
+  title: ''
+  description: ''
+  version: 1.0.0
+paths:
+  /v1/video/create:
+    post:
+      summary: 创建视频 sora-2
+      deprecated: false
+      description: ''
+      tags:
+        - 视频模型/sora 视频生成/异步格式
+      parameters:
+        - name: Content-Type
+          in: header
+          description: ''
+          required: true
+          example: application/json
+          schema:
+            type: string
+        - name: Accept
+          in: header
+          description: ''
+          required: true
+          example: application/json
+          schema:
+            type: string
+        - name: Authorization
+          in: header
+          description: ''
+          required: false
+          example: Bearer {{YOUR_API_KEY}}
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                images:
+                  type: array
+                  items:
+                    type: string
+                  description: 图片链接
+                model:
+                  type: string
+                  description: 模型名字
+                orientation:
+                  type: string
+                  description: |
+                    portrait 竖屏
+                    landscape 横屏
+                prompt:
+                  type: string
+                  description: 提示词
+                size:
+                  type: string
+                  description: small 一般720p
+                duration:
+                  type: string
+                  description: '支持 10 '
+              required:
+                - images
+                - model
+                - orientation
+                - prompt
+                - size
+                - duration
+              x-apifox-orders:
+                - images
+                - model
+                - orientation
+                - prompt
+                - size
+                - duration
+            example:
+              images: []
+              model: sora-2
+              orientation: portrait
+              prompt: make animate
+              size: large
+              duration: 15
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  object:
+                    type: string
+                  created:
+                    type: integer
+                  choices:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        index:
+                          type: integer
+                        message:
+                          type: object
+                          properties:
+                            role:
+                              type: string
+                            content:
+                              type: string
+                          required:
+                            - role
+                            - content
+                          x-apifox-orders:
+                            - role
+                            - content
+                        finish_reason:
+                          type: string
+                      x-apifox-orders:
+                        - index
+                        - message
+                        - finish_reason
+                  usage:
+                    type: object
+                    properties:
+                      prompt_tokens:
+                        type: integer
+                      completion_tokens:
+                        type: integer
+                      total_tokens:
+                        type: integer
+                    required:
+                      - prompt_tokens
+                      - completion_tokens
+                      - total_tokens
+                    x-apifox-orders:
+                      - prompt_tokens
+                      - completion_tokens
+                      - total_tokens
+                required:
+                  - id
+                  - object
+                  - created
+                  - choices
+                  - usage
+                x-apifox-orders:
+                  - id
+                  - object
+                  - created
+                  - choices
+                  - usage
+          headers: {}
+          x-apifox-name: OK
+      security:
+        - bearer: []
+      x-apifox-folder: 视频模型/sora 视频生成/异步格式
+      x-apifox-status: released
+      x-run-in-apifox: https://app.apifox.com/web/project/5443236/apis/api-358068995-run
+components:
+  schemas: {}
+  securitySchemes:
+    bearer:
+      type: http
+      scheme: bearer
+servers:
+  - url: http://yunwu.ai
+    description: 正式环境
+security:
+  - bearer: []
+
+```# 创建视频 sora-2
+
+## OpenAPI Specification
+
+```yaml
+openapi: 3.0.1
+info:
+  title: ''
+  description: ''
+  version: 1.0.0
+paths:
+  /v1/video/create:
+    post:
+      summary: 创建视频 sora-2
+      deprecated: false
+      description: ''
+      tags:
+        - 视频模型/sora 视频生成/异步格式
+      parameters:
+        - name: Content-Type
+          in: header
+          description: ''
+          required: true
+          example: application/json
+          schema:
+            type: string
+        - name: Accept
+          in: header
+          description: ''
+          required: true
+          example: application/json
+          schema:
+            type: string
+        - name: Authorization
+          in: header
+          description: ''
+          required: false
+          example: Bearer {{YOUR_API_KEY}}
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                images:
+                  type: array
+                  items:
+                    type: string
+                  description: 图片链接
+                model:
+                  type: string
+                  description: 模型名字
+                orientation:
+                  type: string
+                  description: |
+                    portrait 竖屏
+                    landscape 横屏
+                prompt:
+                  type: string
+                  description: 提示词
+                size:
+                  type: string
+                  description: small 一般720p
+                duration:
+                  type: string
+                  description: '支持 10 '
+              required:
+                - images
+                - model
+                - orientation
+                - prompt
+                - size
+                - duration
+              x-apifox-orders:
+                - images
+                - model
+                - orientation
+                - prompt
+                - size
+                - duration
+            example:
+              images: []
+              model: sora-2
+              orientation: portrait
+              prompt: make animate
+              size: large
+              duration: 15
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  object:
+                    type: string
+                  created:
+                    type: integer
+                  choices:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        index:
+                          type: integer
+                        message:
+                          type: object
+                          properties:
+                            role:
+                              type: string
+                            content:
+                              type: string
+                          required:
+                            - role
+                            - content
+                          x-apifox-orders:
+                            - role
+                            - content
+                        finish_reason:
+                          type: string
+                      x-apifox-orders:
+                        - index
+                        - message
+                        - finish_reason
+                  usage:
+                    type: object
+                    properties:
+                      prompt_tokens:
+                        type: integer
+                      completion_tokens:
+                        type: integer
+                      total_tokens:
+                        type: integer
+                    required:
+                      - prompt_tokens
+                      - completion_tokens
+                      - total_tokens
+                    x-apifox-orders:
+                      - prompt_tokens
+                      - completion_tokens
+                      - total_tokens
+                required:
+                  - id
+                  - object
+                  - created
+                  - choices
+                  - usage
+                x-apifox-orders:
+                  - id
+                  - object
+                  - created
+                  - choices
+                  - usage
+          headers: {}
+          x-apifox-name: OK
+      security:
+        - bearer: []
+      x-apifox-folder: 视频模型/sora 视频生成/异步格式
+      x-apifox-status: released
+      x-run-in-apifox: https://app.apifox.com/web/project/5443236/apis/api-358068995-run
+components:
+  schemas: {}
+  securitySchemes:
+    bearer:
+      type: http
+      scheme: bearer
+servers:
+  - url: http://yunwu.ai
+    description: 正式环境
+security:
+  - bearer: []
+
+```

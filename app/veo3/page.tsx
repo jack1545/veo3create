@@ -11,6 +11,9 @@ type Veo3FrontendModel =
   | 'veo3-pro'
   | 'veo3-pro-frames'
   | 'veo3-frames'
+  | 'veo3.1'
+  | 'veo3.1-fast'
+  | 'veo3.1-pro'
 
 type SubmitItem = {
   id?: string
@@ -29,11 +32,13 @@ type GlobalSettings = {
 }
 
 const defaultSettings: GlobalSettings = {
-  model: 'veo3-fast-frames',
+  model: 'veo3.1',
   aspectRatio: '9:16',
   enhancePrompt: true,
   enableUpsample: false
 }
+
+import { compressImageIfNeededToDataUrl } from '../lib/image'
 
 async function createVeo3Job(item: SubmitItem, settings: GlobalSettings, token?: string): Promise<{ id?: string; status?: string } | null> {
   const images: string[] = []
@@ -84,6 +89,34 @@ export default function Veo3Page() {
   const [batchInput, setBatchInput] = useState<string>('')
   const [token, setToken] = useState<string>('')
   const [droppedImageUrls, setDroppedImageUrls] = useState<string[]>([])
+  const [modelOrder, setModelOrder] = useState<Veo3FrontendModel[]>(() => {
+    try {
+      const raw = localStorage.getItem('veo3_model_order')
+      if (raw) {
+        const arr = JSON.parse(raw)
+        if (Array.isArray(arr)) {
+          return arr.filter(Boolean) as Veo3FrontendModel[]
+        }
+      }
+    } catch {}
+    return ['veo3.1','veo3.1-fast','veo3.1-pro','veo3','veo3-fast-frames','veo3-fast','veo3-pro','veo3-pro-frames','veo3-frames']
+  })
+  const dragModelIndex = useRef<number | null>(null)
+  const onDragStartModel = (idx: number) => { dragModelIndex.current = idx }
+  const onDragOverModel = (e: React.DragEvent<HTMLSpanElement>) => { e.preventDefault() }
+  const onDropModel = (idx: number) => {
+    const from = dragModelIndex.current
+    if (from == null) return
+    setModelOrder(prev => {
+      const next = [...prev]
+      const [m] = next.splice(from, 1)
+      next.splice(idx, 0, m)
+      try { localStorage.setItem('veo3_model_order', JSON.stringify(next)) } catch {}
+      return next
+    })
+    dragModelIndex.current = null
+  }
+  const [showModelSorter, setShowModelSorter] = useState(false)
 
   const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000
 
@@ -137,6 +170,15 @@ export default function Veo3Page() {
 
   const canSubmitAll = useMemo(() => items.some(i => i.prompt.trim().length > 0), [items])
 
+  const priceTag = useMemo(() => {
+    const m = settings.model
+    if (m === 'veo3') return '￥0.63一条'
+    if (m === 'veo3.1-pro') return '￥2.45一条'
+    if (m === 'veo3.1' || m === 'veo3.1-fast') return '￥0.49一条'
+    if (m === 'veo3-pro' || m === 'veo3-pro-frames') return '￥2.8一条'
+    return null
+  }, [settings.model])
+
   const addItem = () => setItems(prev => [...prev, { prompt: '', aspectRatio: '9:16' }])
   const removeItem = (idx: number) => setItems(prev => prev.filter((_, i) => i !== idx))
 
@@ -145,7 +187,7 @@ export default function Veo3Page() {
 
   const handleImageUpload = async (idx: number, file?: File) => {
     if (!file) return
-    const url = await readFileAsDataUrl(file)
+    const url = await compressImageIfNeededToDataUrl(file)
     updateItem(idx, { firstImage: url })
   }
 
@@ -213,31 +255,31 @@ export default function Veo3Page() {
   }
 
   return (
-    <div style={{ padding: 16, maxWidth: 1200, margin: '0 auto', paddingRight: 340 }}>
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, justifyContent: 'space-between' }}>
-        <h1 style={{ margin: 0 }}>Veo3 批量视频生成</h1>
-        <div style={{ color: '#666', fontSize: 14 }}>
-          目前仅支持yunwu.ai，VEO3 视频目前￥0.6/8秒。技巧：分镜如果是连续的可以一次生成2个分镜
+    <div className="px-4 max-w-screen-xl mx-auto md:pr-[340px]">
+      <div className="flex items-baseline gap-3 justify-between">
+        <h1 className="m-0 text-xl sm:text-2xl font-semibold">Veo3 批量视频生成</h1>
+        <div className="text-sm text-gray-600">
+          目前仅支持yunwu.ai，VEO3.1 视频目前￥0.49/8秒。技巧：分镜如果是连续的可以一次生成2个分镜
         </div>
       </div>
 
-      <div style={{ marginTop: 12, marginBottom: 12 }}>
-        <button onClick={() => setActiveTab('submit')} disabled={activeTab === 'submit'}>提交</button>
-        <button onClick={() => setActiveTab('history')} style={{ marginLeft: 8 }} disabled={activeTab === 'history'}>历史</button>
+      <div className="mt-3 mb-3">
+        <button onClick={() => setActiveTab('submit')} disabled={activeTab === 'submit'} className="px-3 py-1 rounded border border-gray-300 hover:bg-gray-50 disabled:opacity-50">提交</button>
+        <a href="/history" className="ml-2 text-blue-600 hover:underline">历史</a>
       </div>
 
       {activeTab === 'history' ? (
         <div>
-          <h2>历史记录</h2>
-          {history.length === 0 ? <p>暂无记录</p> : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12 }}>
+          <h2 className="text-lg font-semibold">历史记录</h2>
+          {history.length === 0 ? <p className="text-gray-600">暂无记录</p> : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {history.map((h, i) => (
-                <div key={i} style={{ border: '1px solid #ddd', borderRadius: 8, padding: 8 }}>
-                  <div style={{ fontSize: 12, color: '#666' }}>ID: {h.id}</div>
-                  <div style={{ whiteSpace: 'pre-wrap' }}>{h.prompt}</div>
+                <div key={i} className="border rounded p-2">
+                  <div className="text-xs text-gray-600">ID: {h.id}</div>
+                  <div className="whitespace-pre-wrap break-words">{h.prompt}</div>
                   <div>状态: {h.status || 'unknown'}</div>
                   {h.videoUrl && (
-                    <video src={h.videoUrl} controls style={{ width: '100%', marginTop: 8 }} />
+                    <video src={h.videoUrl} controls className="w-full mt-2" />
                   )}
                 </div>
               ))}
@@ -246,39 +288,39 @@ export default function Veo3Page() {
         </div>
       ) : (
         <div>
-          <h2>Token 设置</h2>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 12 }}>
+          <h2 className="text-lg font-semibold">Token 设置</h2>
+          <div className="flex items-center gap-2 mb-3">
             <input
               type="password"
               placeholder="填入你的 Veo3 API Token（仅本地缓存一周）"
               value={token}
               onChange={e => setToken(e.target.value)}
-              style={{ flex: 1 }}
+              className="flex-1 border rounded px-2 py-1"
             />
-            <button onClick={saveToken}>保存到缓存</button>
-            <button onClick={clearToken}>移除缓存</button>
+            <button onClick={saveToken} className="px-3 py-1 rounded border border-gray-300 hover:bg-gray-50">保存到缓存</button>
+            <button onClick={clearToken} className="px-3 py-1 rounded border border-gray-300 hover:bg-gray-50">移除缓存</button>
           </div>
-          <div style={{ fontSize: 12, color: '#a00', marginTop: -8, marginBottom: 12 }}>
+          <div className="text-xs text-red-700 -mt-2 mb-3">
             风险提示：Token 不会保存到服务器，仅在本地缓存一周。请勿在公共设备输入或分享你的 Token；若担心泄露，随时点击“移除缓存”。
           </div>
 
-          <h2>批量录入提示词</h2>
-          <div style={{ marginBottom: 12 }}>
+          <h2 className="text-lg font-semibold">批量录入提示词</h2>
+          <div className="mb-3">
             <textarea
               value={batchInput}
               onChange={e => setBatchInput(e.target.value)}
               rows={6}
               placeholder={'一行一条提示词，示例:\n机器人走到沙雕前，一脚踩坏了沙雕。女孩向后坐在地上大哭。\n女孩悲伤地跑进了一个地下通道，地下通道中有一扇赛博朋克风格的巨门。女孩用手掌纹打开了巨门。'}
-              style={{ width: '100%' }}
+              className="w-full border rounded px-2 py-2"
             />
-            <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-              <button onClick={generateItemsFromBatch}>生成条目</button>
-              <button onClick={clearBatchInput}>清空</button>
+            <div className="flex gap-2 mt-2">
+              <button onClick={generateItemsFromBatch} className="px-3 py-1 rounded border border-gray-300 hover:bg-gray-50">生成条目</button>
+              <button onClick={clearBatchInput} className="px-3 py-1 rounded border border-gray-300 hover:bg-gray-50">清空</button>
             </div>
           </div>
 
           <div
-            style={{ border: '2px dashed #aaa', borderRadius: 8, padding: 12, marginBottom: 12, background: '#fafafa' }}
+            className="border-2 border-dashed rounded p-3 mb-3 bg-gray-50"
             onDragOver={e => { e.preventDefault() }}
             onDrop={async e => {
               e.preventDefault()
@@ -290,7 +332,7 @@ export default function Veo3Page() {
               for (const file of files) {
                 while (ti < targets.length && targets[ti].has) ti++
                 if (ti >= targets.length) break
-                const url = await readFileAsDataUrl(file)
+                const url = await compressImageIfNeededToDataUrl(file)
                 updateItem(targets[ti].idx, { firstImage: url })
                 newUrls.push(url)
                 ti++
@@ -302,33 +344,18 @@ export default function Veo3Page() {
           </div>
 
           {droppedImageUrls.length > 0 && (
-            <div
-              style={{
-                position: 'fixed',
-                top: 96,
-                right: 16,
-                width: 300,
-                maxHeight: '70vh',
-                overflowY: 'auto',
-                background: '#fff',
-                border: '1px solid #ddd',
-                borderRadius: 8,
-                boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
-                padding: 10,
-                zIndex: 1000
-              }}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                <div style={{ fontWeight: 600 }}>已拖入图片（可拖到条目以调整归属）</div>
-                <button style={{ fontSize: 12 }} onClick={() => setDroppedImageUrls([])}>清空</button>
+            <div className="hidden md:block fixed top-24 right-4 w-[300px] max-h-[70vh] overflow-y-auto bg-white border rounded shadow-lg p-2 z-50">
+              <div className="flex justify-between items-center mb-1.5">
+                <div className="font-semibold">已拖入图片（可拖到条目以调整归属）</div>
+                <button className="text-xs" onClick={() => setDroppedImageUrls([])}>清空</button>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8 }}>
+              <div className="grid grid-cols-2 gap-2">
                 {droppedImageUrls.map((url, i) => (
-                  <div key={i} style={{ position: 'relative', border: '1px solid #ddd', borderRadius: 6, padding: 6 }}>
+                  <div key={i} className="relative border rounded p-1.5">
                     <img
                       src={url}
                       alt={`dropped-${i}`}
-                      style={{ width: '100%', height: 90, objectFit: 'cover' }}
+                      className="w-full h-[90px] object-cover"
                       draggable
                       onDragStart={e => {
                         e.dataTransfer.setData('text/plain', url)
@@ -338,20 +365,7 @@ export default function Veo3Page() {
                     <button
                       title="删除"
                       onClick={() => setDroppedImageUrls(prev => prev.filter((_, j) => j !== i))}
-                      style={{
-                        position: 'absolute',
-                        top: 4,
-                        right: 4,
-                        background: '#fff',
-                        border: '1px solid #ccc',
-                        borderRadius: 12,
-                        width: 20,
-                        height: 20,
-                        lineHeight: '18px',
-                        textAlign: 'center',
-                        cursor: 'pointer',
-                        fontSize: 12
-                      }}
+                      className="absolute top-1 right-1 bg-white border border-gray-300 rounded-full w-5 h-5 flex items-center justify-center text-xs"
                     >×</button>
                   </div>
                 ))}
@@ -360,46 +374,63 @@ export default function Veo3Page() {
           )}
 
           <h2>全局设置</h2>
-          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-            <label>
+          <div className="flex flex-wrap gap-3">
+            <label className="text-sm">
               模型：
-              <select value={settings.model} onChange={e => setSettings(s => ({ ...s, model: e.target.value as Veo3FrontendModel }))}>
-                <option value="veo3">veo3</option>
-                <option value="veo3-fast-frames">veo3-fast-frames</option>
-                <option value="veo3-fast">veo3-fast</option>
-                <option value="veo3-pro">veo3-pro</option>
-                <option value="veo3-pro-frames">veo3-pro-frames</option>
-                <option value="veo3-frames">veo3-frames</option>
+              <select value={settings.model} onChange={e => setSettings(s => ({ ...s, model: e.target.value as Veo3FrontendModel }))} className="ml-2 border rounded px-2 py-1">
+                {modelOrder.map(m => (
+                  <option key={m} value={m}>{m}</option>
+                ))}
               </select>
-              {(settings.model === 'veo3-pro' || settings.model === 'veo3-pro-frames') && (
-                <span style={{ marginLeft: 8, color: '#a00' }}>￥2.8一条</span>
+              {priceTag && (
+                <span className="ml-2 text-red-600 text-sm">{priceTag}</span>
               )}
+              <div className="mt-2">
+                 <button onClick={() => setShowModelSorter(s => !s)} className="px-2 py-1 rounded border border-gray-300 text-sm">{showModelSorter ? '折叠排序' : '展开排序'}</button>
+                 {showModelSorter && (
+                   <div className="mt-2 flex gap-2 flex-wrap items-center">
+                     <span className="text-xs text-gray-600">拖动以调整顺序：</span>
+                     {modelOrder.map((m, idx) => (
+                       <span
+                         key={m}
+                         draggable
+                         onDragStart={() => onDragStartModel(idx)}
+                         onDragOver={onDragOverModel}
+                         onDrop={() => onDropModel(idx)}
+                         className={`px-2 py-0.5 rounded-full border border-gray-300 cursor-grab ${m===settings.model ? 'bg-blue-50' : 'bg-white'}`}
+                       >
+                         {m}
+                       </span>
+                     ))}
+                   </div>
+                 )}
+               </div>
             </label>
-            <label>
+            <label className="text-sm">
               画幅：
-              <select value={settings.aspectRatio} onChange={e => setSettings(s => ({ ...s, aspectRatio: e.target.value as AspectRatio }))}>
+              <select value={settings.aspectRatio} onChange={e => setSettings(s => ({ ...s, aspectRatio: e.target.value as AspectRatio }))} className="ml-2 border rounded px-2 py-1">
                 <option value="16:9">16:9</option>
                 <option value="9:16">9:16</option>
               </select>
             </label>
-            <label>
-              <input type="checkbox" checked={settings.enhancePrompt} onChange={e => setSettings(s => ({ ...s, enhancePrompt: e.target.checked }))} /> 自动润色
+            <label className="text-sm">
+              <input type="checkbox" checked={settings.enhancePrompt} onChange={e => setSettings(s => ({ ...s, enhancePrompt: e.target.checked }))} className="mr-1" /> 自动润色
             </label>
-            <label>
-              <input type="checkbox" checked={settings.enableUpsample} onChange={e => setSettings(s => ({ ...s, enableUpsample: e.target.checked }))} /> 超采样
+            <label className="text-sm">
+              <input type="checkbox" checked={settings.enableUpsample} onChange={e => setSettings(s => ({ ...s, enableUpsample: e.target.checked }))} className="mr-1" /> 超采样
             </label>
           </div>
 
-          <div style={{ marginTop: 16, marginBottom: 8, display: 'flex', gap: 8 }}>
-            <button onClick={addItem}>新增条目</button>
-            <button onClick={submitAll} disabled={!canSubmitAll}>提交全部</button>
+          <div className="mt-4 mb-2 flex gap-2">
+            <button onClick={addItem} className="px-3 py-1 rounded border border-gray-300">新增条目</button>
+            <button onClick={submitAll} disabled={!canSubmitAll} className="px-3 py-1 rounded bg-brand text-white hover:bg-brand-dark disabled:opacity-50">提交全部</button>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 12 }}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {items.map((it, idx) => (
               <div
                 key={idx}
-                style={{ border: '1px solid #ddd', borderRadius: 8, padding: 12 }}
+                className="border rounded-lg p-4 bg-white shadow-sm"
                 onDragOver={e => { e.preventDefault() }}
                 onDrop={async e => {
                   e.preventDefault()
@@ -415,28 +446,31 @@ export default function Veo3Page() {
                   }
                   const files = Array.from(e.dataTransfer.files || []).filter(f => f.type.startsWith('image/'))
                   if (files.length) {
-                    const url = await readFileAsDataUrl(files[0])
+                    const url = await compressImageIfNeededToDataUrl(files[0])
                     updateItem(idx, { firstImage: url })
                   }
                 }}
               >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <strong>条目 {idx + 1}</strong>
-                  <button onClick={() => removeItem(idx)}>删除</button>
+                <div className="flex justify-between items-center">
+                  <strong className="font-semibold">条目 {idx + 1}</strong>
+                  <button onClick={() => removeItem(idx)} className="text-sm text-red-600 hover:underline">删除</button>
                 </div>
-                <label style={{ display: 'block', marginTop: 8 }}>提示词：</label>
-                <textarea value={it.prompt} onChange={e => updateItem(idx, { prompt: e.target.value })} rows={4} style={{ width: '100%' }} placeholder="输入中文提示词即可，API会将中文转为英文" />
+                <label className="block mt-2 text-sm">提示词：</label>
+                <textarea value={it.prompt} onChange={e => updateItem(idx, { prompt: e.target.value })} rows={4} className="w-full mt-1 border rounded px-2 py-1" placeholder="输入中文提示词即可，API会将中文转为英文" />
 
-                <label style={{ display: 'block', marginTop: 8 }}>画幅：</label>
-                <select value={it.aspectRatio || '9:16'} onChange={e => updateItem(idx, { aspectRatio: e.target.value as AspectRatio })}>
+                <label className="block mt-2 text-sm">画幅：</label>
+                <select value={it.aspectRatio || '9:16'} onChange={e => updateItem(idx, { aspectRatio: e.target.value as AspectRatio })} className="border rounded px-2 py-1">
                   <option value="9:16">9:16</option>
                   <option value="16:9">16:9</option>
                 </select>
 
-                <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
-                  <div>
+                <div className="flex gap-3 mt-2">
+                  <div className="md:w-48 overflow-hidden">
                     <div>首帧图：</div>
-                    <input type="file" accept="image/*" onChange={e => handleImageUpload(idx, e.target.files?.[0])}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={e => handleImageUpload(idx, e.target.files?.[0])}
                       onDragOver={e => { e.preventDefault() }}
                       onDrop={async e => {
                         e.preventDefault()
@@ -452,50 +486,51 @@ export default function Veo3Page() {
                         }
                         const f = e.dataTransfer.files?.[0]
                         if (f && f.type.startsWith('image/')) {
-                          const url = await readFileAsDataUrl(f)
+                          const url = await compressImageIfNeededToDataUrl(f)
                           updateItem(idx, { firstImage: url })
                         }
                       }}
+                      className="mt-1 block w-full text-sm file:px-2 file:py-1 file:border file:rounded file:bg-gray-50"
                     />
                     {it.firstImage && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6 }}>
+                      <div className="flex items-center gap-1.5 mt-1.5">
                         <img
                           src={it.firstImage}
                           alt="first"
-                          style={{ width: 120 }}
+                          className="w-28 rounded"
                           draggable
                           onDragStart={e => {
                             e.dataTransfer.setData('text/plain', it.firstImage || '')
                             e.dataTransfer.setData('sourceItemIdx', String(idx))
                           }}
                         />
-                        <button style={{ fontSize: 12 }} onClick={() => updateItem(idx, { firstImage: undefined })}>移除首帧</button>
+                        <button className="text-xs text-gray-600 hover:underline" onClick={() => updateItem(idx, { firstImage: undefined })}>移除首帧</button>
                       </div>
                     )}
                   </div>
-                  <div style={{ flex: 1 }}>
+                  <div className="flex-1">
                     <div>首帧图 URL：</div>
                     <input
                       type="url"
-                    placeholder="https://..."
-                    value={it.firstImage || ''}
-                    onChange={e => updateItem(idx, { firstImage: e.target.value })}
-                    style={{ width: '100%' }}
-                  />
+                      placeholder="https://..."
+                      value={it.firstImage || ''}
+                      onChange={e => updateItem(idx, { firstImage: e.target.value })}
+                      className="w-full border rounded px-2 py-1"
+                    />
+                  </div>
                 </div>
-              </div>
 
-                <div style={{ marginTop: 10, display: 'flex', gap: 8, alignItems: 'center' }}>
-                  <button onClick={() => submitOne(idx)}>提交</button>
-                  <span>状态：{it.status || '-'}</span>
+                <div className="mt-3 flex gap-2 items-center">
+                  <button onClick={() => submitOne(idx)} className="px-3 py-1 rounded bg-brand text-white hover:bg-brand-dark">提交</button>
+                  <span className="text-sm text-gray-700">状态：{it.status || '-'}</span>
                 </div>
 
                 {it.videoUrl && (
-                  <div style={{ marginTop: 8 }}>
-                    <video src={it.videoUrl} controls style={{ width: '100%' }} />
-                    <div style={{ marginTop: 6 }}>
-                      <a href={it.videoUrl} target="_blank" rel="noreferrer" style={{ marginRight: 8 }}>在新窗口打开</a>
-                      <a href={it.videoUrl} download>下载视频</a>
+                  <div className="mt-2">
+                    <video src={it.videoUrl} controls className="w-full rounded" />
+                    <div className="mt-1.5">
+                      <a href={it.videoUrl} target="_blank" rel="noreferrer" className="mr-2 text-blue-600 hover:underline">在新窗口打开</a>
+                      <a href={it.videoUrl} download className="text-blue-600 hover:underline">下载视频</a>
                     </div>
                   </div>
                 )}
