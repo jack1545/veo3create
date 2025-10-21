@@ -8,7 +8,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <a href="/" className="font-semibold text-brand hover:opacity-90 transition-opacity px-2 py-1 rounded">API Guide</a>
             <a href="/veo3" className="hover:text-brand transition-colors px-2 py-1 rounded hover:bg-gray-50">Veo3</a>
             <a href="/sora2" className="hover:text-brand transition-colors px-2 py-1 rounded hover:bg-gray-50">Sora2</a>
-            <a href="https://yunwu.ai/register?aff=nXmR" className="hover:text-brand transition-colors px-2 py-1 rounded hover:bg-gray-50">获取Token</a>
+            <a href="https://yunwu.ai/register?aff=nXmR" className="hover:text-brand transition-colors px-2 py-1 rounded hover:bg-gray-50" target="_blank">获取Token</a>
             <a href="/history" className="ml-auto hover:text-brand transition-colors px-2 py-1 rounded hover:bg-gray-50">历史</a>
           </nav>
         </header>
