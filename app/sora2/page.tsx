@@ -33,9 +33,11 @@ const defaultSettings: GlobalSettings = {
 }
 
 async function createJob(item: SubmitItem, settings: GlobalSettings, token?: string) {
+  const images: string[] = []
+  if (item.firstImage) images.push(item.firstImage)
   const payload = Sora2Adapter.buildCreateBody(
-    { id: item.id, prompt: item.prompt, image_urls: item.images || [] },
-    { duration: settings.duration, fps: settings.fps, resolution: settings.resolution },
+    { id: item.id, prompt: item.prompt, images },
+    { model: settings.model, orientation: item.orientation || settings.orientation, size: settings.size, duration: settings.duration },
     token
   )
   const resp = await fetch(Sora2Adapter.createEndpoint, {

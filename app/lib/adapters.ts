@@ -9,15 +9,16 @@ export interface SourceAdapter<Item, Settings, Detail> {
 
 // ---- Sora2 Adapter ----
 export type SoraItem = {
-  id: string
+  id?: string
   prompt: string
-  image_urls?: string[]
+  images?: string[]
 }
 
 export type SoraSettings = {
+  model: 'sora-2' | 'sora-2-pro'
+  orientation: 'portrait' | 'landscape'
+  size: 'small' | 'large'
   duration: number
-  fps: number
-  resolution: string
 }
 
 export type SoraDetail = {
@@ -33,11 +34,12 @@ export const Sora2Adapter: SourceAdapter<SoraItem, SoraSettings, SoraDetail> = {
   detailEndpoint: '/api/sora2/query',
   buildCreateBody: (item, settings, token) => ({
     token,
+    images: item.images || [],
+    model: settings.model,
+    orientation: settings.orientation,
     prompt: item.prompt,
-    image_urls: item.image_urls || [],
+    size: settings.size,
     duration: settings.duration,
-    fps: settings.fps,
-    resolution: settings.resolution,
   }),
   parseDetailResponse: (resp: any) => {
     if (!resp) return null
@@ -50,7 +52,7 @@ export const Sora2Adapter: SourceAdapter<SoraItem, SoraSettings, SoraDetail> = {
 
 // ---- Veo3 Adapter ----
 export type VeoItem = {
-  id: string
+  id?: string
   prompt: string
   images?: string[]
 }
